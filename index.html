@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テニスゲーム (Pong)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        
+        .game-container {
+            text-align: center;
+        }
+        
+        canvas {
+            border: 2px solid white;
+            background: #000;
+        }
+        
+        .score {
+            font-size: 48px;
+            margin: 20px 0;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        
+        .start-btn {
+            background: white;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .start-btn:hover {
+            background: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="score">
+            <span id="player1Score">0</span> - <span id="player2Score">0</span>
+        </div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div class="controls">
+            <button class="start-btn" onclick="startGame()">ゲーム開始</button>
+            <button class="start-btn" onclick="resetGame()">リセット</button>
+            <br><br>
+            左プレイヤー: W/S キー | 右プレイヤー: ↑/↓ キー
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameRunning = false;
+        let player1Score = 0;
+        let player2Score = 0;
+        
+        const paddle = {
+            width: 15,
+            height: 80,
+            speed: 5
+        };
+        
+        const player1 = {
+            x: 10,
+            y: canvas.height / 2 - paddle.height / 2,
+            dy: 0
+        };
+        
+        const player2 = {
+            x: canvas.width - 10 - paddle.width,
+            y: canvas.height / 2 - paddle.height / 2,
+            dy: 0
+        };
+        
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 8,
+            dx: 4,
+            dy: 3,
+            speed: 4
+        };
+        
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        function updatePaddles() {
+            if (keys['w'] || keys['W']) {
+                player1.dy = -paddle.speed;
+            } else if (keys['s'] || keys['S']) {
+                player1.dy = paddle.speed;
+            } else {
+                player1.dy = 0;
+            }
+            
+            if (keys['ArrowUp']) {
+                player2.dy = -paddle.speed;
+            } else if (keys['ArrowDown']) {
+                player2.dy = paddle.speed;
+            } else {
+                player2.dy = 0;
+            }
+            
+            player1.y += player1.dy;
+            player2.y += player2.dy;
+            
+            if (player1.y < 0) player1.y = 0;
+            if (player1.y + paddle.height > canvas.height) {
+                player1.y = canvas.height - paddle.height;
+            }
+            
+            if (player2.y < 0) player2.y = 0;
+            if (player2.y + paddle.height > canvas.height) {
+                player2.y = canvas.height - paddle.height;
+            }
+        }
+        
+        function updateBall() {
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+            
+            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+                ball.dy = -ball.dy;
+            }
+            
+            if (ball.x - ball.radius < player1.x + paddle.width &&
+                ball.y > player1.y &&
+                ball.y < player1.y + paddle.height &&
+                ball.dx < 0) {
+                ball.dx = -ball.dx;
+                ball.dy += player1.dy * 0.1;
+            }
+            
+            if (ball.x + ball.radius > player2.x &&
+                ball.y > player2.y &&
+                ball.y < player2.y + paddle.height &&
+                ball.dx > 0) {
+                ball.dx = -ball.dx;
+                ball.dy += player2.dy * 0.1;
+            }
+            
+            if (ball.x < 0) {
+                player2Score++;
+                resetBall();
+            }
+            
+            if (ball.x > canvas.width) {
+                player1Score++;
+                resetBall();
+            }
+        }
+        
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = ball.dx > 0 ? -ball.speed : ball.speed;
+            ball.dy = (Math.random() - 0.5) * 6;
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'white';
+            ctx.fillRect(player1.x, player1.y, paddle.width, paddle.height);
+            ctx.fillRect(player2.x, player2.y, paddle.width, paddle.height);
+            
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.setLineDash([5, 15]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            document.getElementById('player1Score').textContent = player1Score;
+            document.getElementById('player2Score').textContent = player2Score;
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            updatePaddles();
+            updateBall();
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function startGame() {
+            gameRunning = true;
+            gameLoop();
+        }
+        
+        function resetGame() {
+            gameRunning = false;
+            player1Score = 0;
+            player2Score = 0;
+            
+            player1.y = canvas.height / 2 - paddle.height / 2;
+            player2.y = canvas.height / 2 - paddle.height / 2;
+            
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = 4;
+            ball.dy = 3;
+            
+            draw();
+        }
+        
+        resetGame();
+    </script>
+</body>
+</html>
